@@ -4,7 +4,7 @@ Easy to use, general purpose CuRL wrapper
 
 ### Basic usage
 
-You'll need to include `cacher.inc.php` [from here](https://github.com/biohzrdmx/cacher-php) before including `curly.inc.php`.
+You'll need to include `cacher.inc.php` [from here](https://github.com/TheWebChimp/cacher-php) before including `curly.inc.php`.
 
 ```php
 <?php
