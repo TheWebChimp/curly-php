@@ -1,5 +1,4 @@
-curly-php
-=========
+![Curly](https://io.elchangodelaweb.com/assets/logo-curly.png)
 
 Easy to use, general purpose CuRL wrapper
 
