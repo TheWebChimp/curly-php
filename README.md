@@ -7,6 +7,8 @@ Easy to use, general purpose CuRL wrapper
 
 You'll need to include `cacher.inc.php` [from here](https://github.com/biohzrdmx/cacher-php) before including `curly.inc.php`.
 
+```php
+<?php
 	// Just grab a new instance, the boolean parameter controls caching:
 	$curly = Curly::newInstance(false)
 		->setMethod('get')
@@ -24,6 +26,8 @@ You'll need to include `cacher.inc.php` [from here](https://github.com/biohzrdmx
 	} else {
 		echo 'API error: ' . $curly->getError();
 	}
+?>
+```
 
 For `HTTPS` just grab a copy of `cacert.pem` [from here](https://curl.haxx.se/docs/caextract.html) and drop it on the same folder where the `curly.inc.php` file is located.
 
