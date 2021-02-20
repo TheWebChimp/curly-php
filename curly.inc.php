@@ -1,29 +1,16 @@
 <?php
 	/**
-	 * Curly
-	 * @author 	biohzrdmx <github.com/biohzrdmx>
-	 * @version 1.0
-	 * @license MIT
-	 * @uses    Cacher <github.com/biohzrdmx/cacher-php>
-	 * @example Basic usage:
+	 *┌─┐┬ ┬┬─┐┬ ┬ ┬
+	 *│  │ │├┬┘│ └┬┘
+	 *└─┘└─┘┴└─┴─┘┴
 	 *
-	 *    // Just grab a new instance, the boolean parameter controls caching:
-	 *    $curly = Curly::newInstance(false)
-	 *    	->setMethod('get')
-	 *    	->setURL('http://api.icndb.com/jokes/random')
-	 *    	->setParams([ 'limitTo' => 'nerdy' ])
-	 *    	->execute();
-	 *    // Then just get the response, you may even specify the format ('plain' or 'json')
-	 *    $res = $curly->getResponse('json');
-	 *    // And just use the returned data
-	 *    if ($res && $res->type == 'success') {
-	 *    	# Error checking may vary, here the API sets a } `type` member
-	 *    	echo $res->value->joke;
-	 *    } else {
-	 *    	echo 'API error: ' . $curly->getError();
-	 *    }
-	 *
+	 * @copyright  Chimp Web Studio
+	 * @author     webchimp <github.com/webchimp>
+	 * @version    1.0
+	 * @license    MIT
+	 * @uses       Cacher <github.com/TheWebChimp/cacher-php>
 	 */
+
 	class Curly {
 
 		protected $method;
@@ -32,10 +19,11 @@
 		protected $fields;
 		protected $headers;
 		protected $response;
+		protected $info;
 		protected $options;
 		protected $caching;
-		protected $error;
-		protected $info;
+		protected $files;
+		protected $cacert;
 
 		function __construct() {
 			$this->method = 'get';
@@ -45,37 +33,38 @@
 			$this->headers = array();
 			$this->options = array();
 			$this->response = '';
-			$this->error = '';
-			$this->info = '';
+			$this->info = array();
+			$this->cacert = '';
 			$this->caching = true;
+			$this->files = false;
 		}
 
 		/**
-		 * Simple shim for baseDir (for Hummingbird/Dragonfly you should use the built-in method)
-		 * @param  string $path Path
-		 * @return string       Fully-qualified path
-		 */
-		static function baseDir($path) {
-			$dir = dirname(__FILE__);
-			$ret = "{$dir}{$path}";
-			return $ret;
-		}
-
-		/**
-		 * Return a new instance
-		 * @param  boolean $caching Whether to use caching or not
-		 * @return object           New Curly instance
+		 * Generates a new instance of Curly
+		 *
+		 * @param bool $caching  Determines if the caching should be on or off
+		 * @return object returns a new instance of Curly
+		 * @access public
+		 * @static
 		 */
 		static function newInstance($caching = true) {
+			global $site;
 			$new = new self();
 			$new->caching = $caching;
+
+			if(isset($site)) {
+				$new->cacert = $site->baseDir('/cacert.pem');
+			}
+
 			return $new;
 		}
 
 		/**
-		 * Set the HTTP method ('get, 'post', 'put', etc)
-		 * @param string $method The HTTP verb, in lowercase
-		 * @return object This instance, for chaining
+		 * Sets the method for the curl request
+		 *
+		 * @param string $method  Method to use in curl (get, post, put, delete, etc)
+		 * @return object returns the Curly instance
+		 * @access public
 		 */
 		function setMethod($method) {
 			$this->method = $method;
@@ -83,9 +72,11 @@
 		}
 
 		/**
-		 * Set the URL
-		 * @param string $url The URL to which the request will be made
-		 * @return object This instance, for chaining
+		 * Sets the method for the curl request
+		 *
+		 * @param string $url  Url for the curl request
+		 * @return object returns the Curly instance
+		 * @access public
 		 */
 		function setURL($url) {
 			$this->url = $url;
@@ -93,9 +84,35 @@
 		}
 
 		/**
-		 * Set the params for the current request
-		 * @param array $params Array of named params (associative) that will be passed on the URL
-		 * @return object This instance, for chaining
+		 * Sets the method for the curl request
+		 *
+		 * @param bool $flag  flag to define if files are present or not
+		 * @return object returns the Curly instance
+		 * @access public
+		 */
+		function setFiles($flag) {
+			$this->files = $flag;
+			return $this;
+		}
+
+		/**
+		 * Sets CA certification file location
+		 *
+		 * @param string $file  Cacert.pem file location
+		 * @return object returns the Curly instance
+		 * @access public
+		 */
+		function setCacert($file) {
+			$this->cacert = $file;
+			return $this;
+		}
+
+		/**
+		 * Sets params for get curl request
+		 *
+		 * @param array $params  Params for request
+		 * @return object returns the Curly instance
+		 * @access public
 		 */
 		function setParams($params) {
 			$this->params = $params;
@@ -103,9 +120,11 @@
 		}
 
 		/**
-		 * Set the fields for the current request
-		 * @param array $fields Array of named fields (associative) that will be passed on the request body (application/x-www-form-urlencoded)
-		 * @return object This instance, for chaining
+		 * Sets fields for post-like curl request
+		 *
+		 * @param mixed $field  Fields to pass curl request
+		 * @return object returns the Curly instance
+		 * @access public
 		 */
 		function setFields($fields) {
 			$this->fields = $fields;
@@ -113,9 +132,11 @@
 		}
 
 		/**
-		 * Set the headers for the current request
-		 * @param array $headers Array of named headers (associative) that will be passed to the request
-		 * @return object This instance, for chaining
+		 * Sets headers for curl request
+		 *
+		 * @param mixed $headers  Headers passed to curl request
+		 * @return object returns the Curly instance
+		 * @access public
 		 */
 		function setHeaders($headers) {
 			$this->headers = $headers;
@@ -123,9 +144,11 @@
 		}
 
 		/**
-		 * Set additional CuRL options for the current request
-		 * @param array $options Array of named options and its values (associative) in the form `array('CURLOPT_RETURNTRANSFER' => true)`
-		 * @return object This instance, for chaining
+		 * Sets options for curl request
+		 *
+		 * @param mixed $options  Options (CuRL opts) passed to curl request
+		 * @return object returns the Curly instance
+		 * @access public
 		 */
 		function setOptions($options) {
 			$this->options = $options;
@@ -133,16 +156,17 @@
 		}
 
 		/**
-		 * Get the response of the current request, once executed
-		 * @param  string $format Format specifier, can be `plain` for the raw response or `json` which will try to parse the response into an object
-		 * @return mixed          The raw response (plain) or False/Object (json)
-		 * @return object This instance, for chaining
+		 * Returns the response from curl request. It can be as HTML (default) or JSON
+		 *
+		 * @param string $format  Format in which the curl request should be returned
+		 * @return mixed returns the curl response in the format specified by the $format param
+		 * @access public
 		 */
-		function getResponse($format = 'plain') {
+		function getResponse($format = 'html') {
 			$ret = '';
 			switch ($format) {
 				case 'json':
-					$ret = @json_decode($this->response);
+					$ret = json_decode($this->response);
 				break;
 				default:
 					$ret = $this->response;
@@ -152,24 +176,21 @@
 		}
 
 		/**
-		 * Get the last error
-		 * @return string The last error string, if any
-		 */
-		function getError() {
-			return $this->error;
-		}
-
-		/**
-		 * Get request info
-		 * @return array The current request info (status, headers, etc)
+		 * Returns the response from curl request. It can be as HTML (default) or JSON
+		 *
+		 * @return array return the information of the curl request, for debugging purposes
+		 * @access public
 		 */
 		function getInfo() {
 			return $this->info;
 		}
 
 		/**
-		 * Execute the current request
-		 * @return object This instance, for chaining
+		 * Executes the curl request with all the configuration defined previously. This is an
+		 * interface for the _execute function
+		 *
+		 * @return object returns the Curly instance
+		 * @access public
 		 */
 		function execute() {
 			if ($this->caching) {
@@ -194,7 +215,11 @@
 		}
 
 		/**
-		 * Execute helper, you shouldn't worry about this
+		 * This is the real curl execution function which sets up all the configuration to achieve
+		 * a curly function.
+		 *
+		 * @return object returns the Curly instance
+		 * @access protected
 		 */
 		protected function _execute() {
 			# Create query string
@@ -203,11 +228,13 @@
 			if ($query) {
 				$url = "{$this->url}?{$query}";
 			}
+			// print_a($url);
 			# Open connection
 			$ch = curl_init();
 			# Set the url, number of POST vars, POST data, etc
 			curl_setopt($ch, CURLOPT_URL, $url);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 			# Extra options
 			if ($this->options) {
 				foreach ($this->options as $key => $value) {
@@ -226,23 +253,28 @@
 			if ( preg_match('/https:\/\//', $url) === 1 ) {
 				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
 				curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-				curl_setopt($ch, CURLOPT_CAINFO, $this->baseDir('/cacert.pem'));
+				curl_setopt($ch, CURLOPT_CAINFO, $this->cacert);
 			}
 			# POST/PUT/DELETE
 			if ($this->method != 'get') {
-				if ( is_array($this->fields) ) {
+				if ( is_array($this->fields) && !$this->files ) {
 					$fields = http_build_query($this->fields);
 					curl_setopt($ch, CURLOPT_POST, count($this->fields));
 					curl_setopt($ch, CURLOPT_POSTFIELDS, $fields);
 				} else {
-					curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($this->method));
 					curl_setopt($ch, CURLOPT_POSTFIELDS, $this->fields);
 				}
+				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($this->method));
 			}
 			# Execute request
 			$this->response = curl_exec($ch);
-			$this->error = curl_error($ch);
 			$this->info = curl_getinfo($ch);
+			if ( curl_errno($ch) ) {
+
+				if(function_exists('log_to_file')) {
+					log_to_file(curl_error($ch), 'curly');
+				}
+			}
 			# Close connection
 			curl_close($ch);
 		}
